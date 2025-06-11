@@ -1,6 +1,6 @@
 # C.L.I.P. — Command Line Interface Parser
 
-Powered w/ 🥄 by @imgnx
+Powered w/ 🥄 by @imgnxtion
 
 $$
 \begin{aligned}

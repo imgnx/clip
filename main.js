@@ -1,6 +1,11 @@
 #!/usr/bin/env node
+"use strict";
 
-// List of escape sequences/sub-commands that should collect args until a terminator (e.g., ";")
+// Import necessary modules
+const { spawnSync } = require("child_process");
+const path = require("path");
+
+// List of sub-commands and escape sequences
 const escapeSequences = ["exec"];
 const escapeTerminator = [";", "\\;"];
 
@@ -112,4 +117,30 @@ if (!result.command) {
   process.exit(1);
 }
 
-console.log(JSON.stringify(result, null, 2));
+// Build argument list for main.sh
+let shArgs = [];
+if (result.command) shArgs.push(result.command);
+if (result.path) shArgs.push(result.path);
+
+// Add options/flags
+for (const [key, value] of Object.entries(result)) {
+  if (key === "command" || key === "path") continue;
+  if (typeof value === "boolean" && value) {
+    shArgs.push(`-${key}`);
+  } else if (typeof value === "string" || typeof value === "number") {
+    if (escapeSequences.includes(key)) {
+      shArgs.push(`-${key}`);
+      shArgs.push(...value.split(" "));
+      shArgs.push(";");
+    } else {
+      shArgs.push(`-${key}`);
+      shArgs.push(String(value));
+    }
+  }
+}
+
+// Invoke ./src/main.sh
+const shPath = path.join(__dirname, "src", "main.sh");
+const proc = spawnSync(shPath, shArgs, { stdio: "inherit" });
+
+process.exit(proc.status);
