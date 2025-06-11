@@ -1,0 +1,77 @@
+#!/usr/bin/env node
+
+const rawArgs = process.argv.slice(2);
+const result = {};
+
+let i = 0;
+
+while (i < rawArgs.length) {
+  let arg = rawArgs[i];
+
+  // First is the command
+  if (!result.command) {
+    result.command = arg;
+    i++;
+    continue;
+  }
+
+  // First non-flag after command is path
+  if (!result.path && !arg.startsWith('-')) {
+    result.path = arg;
+    i++;
+    continue;
+  }
+
+  // Normalize -key=value or --key=value
+  if (arg.startsWith('-') && arg.includes('=')) {
+    const [rawKey, value] = arg.split(/=(.+)/);
+    const key = normalizeKey(rawKey);
+    result[key] = parseValue(value);
+    i++;
+    continue;
+  }
+
+  // -key <value> pattern
+  if (arg.startsWith('-')) {
+    const key = normalizeKey(arg);
+    const next = rawArgs[i + 1];
+
+    // Handle special case: -exec ... \; → collect as string
+    if (key === 'exec') {
+      let execParts = [];
+      i++;
+      while (i < rawArgs.length && rawArgs[i] !== ';' && rawArgs[i] !== '\\;') {
+        execParts.push(rawArgs[i]);
+        i++;
+      }
+      result[key] = execParts.join(' ');
+      i++; // skip the terminating ; or \;
+      continue;
+    }
+
+    if (next && !next.startsWith('-')) {
+      result[key] = parseValue(next);
+      i += 2;
+    } else {
+      result[key] = true; // treat as boolean flag
+      i++;
+    }
+    continue;
+  }
+
+  // fallback positional (not path, not a flag)
+  i++;
+}
+
+function normalizeKey(flag) {
+  return flag.replace(/^-+/, '').replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+}
+
+function parseValue(val) {
+  if (val === 'true') return true;
+  if (val === 'false') return false;
+  const num = Number(val);
+  return isNaN(num) ? val : num;
+}
+
+console.log(JSON.stringify(result, null, 2));
